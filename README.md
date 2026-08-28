@@ -23,7 +23,7 @@ Follow these steps to run the frontend locally:
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/upgradcv-ai.git
+git clone https://github.com/ManojKumarPatel-13/upgradcv-ai.git
 cd upgradcv-ai
 
 ```
