@@ -1,16 +1,46 @@
-# React + Vite
+# UpgradCV
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An AI-powered resume tailoring studio built for the SyncGaze Hackathon. UpgradCV scores candidate profiles against job descriptions, highlights critical keyword gaps, and generates ATS-compliant PDFs to help applicants land interviews without hallucinating qualifications.
 
-Currently, two official plugins are available:
+## Core Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+* **Zero-Friction Ingestion:** Drag-and-drop PDF upload and job description text parsing.
+* **Analytics Dashboard:** Animated circular match scoring and a categorized skill gap matrix (Matched vs. Missing).
+* **Interactive Tailoring Studio:** Side-by-side visual diffs comparing original resume bullets with AI-optimized, metric-driven rewrites. Includes manual inline editing.
+* **ATS-Safe PDF Export:** One-click client-side export to a clean, single-column ATS-compliant PDF using `html2pdf.js`.
+* **Demo Mode:** Instant one-click mock data injection to guarantee a flawless live presentation.
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+* **Frontend:** React (via Vite), Tailwind CSS, Lucide React (Icons), `html2pdf.js`
+* **Backend (Planned):** Node.js, Express, `multer`, `pdf-parse`
+* **AI Engine:** Prompt-engineered LLM (Google Gemini / Groq) with strict JSON schema enforcement
 
-## Expanding the ESLint configuration
+## Local Development Setup
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Follow these steps to run the frontend locally:
+
+**1. Clone the repository**
+
+```bash
+git clone https://github.com/yourusername/upgradcv-ai.git
+cd upgradcv-ai
+
+```
+
+**2. Install dependencies**
+
+```bash
+npm install
+
+```
+
+**3. Start the Vite development server**
+
+```bash
+npm run dev
+
+```
+
+**4. Access the application**
+Open your browser and navigate to `http://localhost:5173`.
