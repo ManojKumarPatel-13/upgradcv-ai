@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 export default function TailoringStudio({ data, onBack, onNext }) {
-  const [diffs, setDiffs] = useState(data.bulletDiffs);
+  const [diffs, setDiffs] = useState(data.bulletDiffs || []);
   const [prompts, setPrompts] = useState({});
   const [isRegenerating, setIsRegenerating] = useState({});
 
@@ -28,26 +28,46 @@ export default function TailoringStudio({ data, onBack, onNext }) {
     setPrompts({ ...prompts, [id]: value });
   };
 
-  const handleRegenerate = (id) => {
+  const handleRegenerate = async (id, originalText) => {
     if (!prompts[id]) return;
 
     setIsRegenerating({ ...isRegenerating, [id]: true });
 
-    setTimeout(() => {
+    try {
+      const response = await fetch("http://localhost:4000/api/refine", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          originalText: originalText,
+          instruction: prompts[id],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to refine text");
+      }
+
+      const responseData = await response.json();
+
       setDiffs(
         diffs.map((diff) => {
           if (diff.id === id) {
             return {
               ...diff,
-              suggested: `(Customized for "${prompts[id]}"): Engineered scalable web applications using React and Tailwind CSS, achieving a 30% improvement in UI consistency and performance metrics.`,
+              suggested: responseData.refinedText,
             };
           }
           return diff;
         }),
       );
+    } catch (error) {
+      alert("Failed to refine the bullet point. Please try again.");
+    } finally {
       setIsRegenerating({ ...isRegenerating, [id]: false });
       setPrompts({ ...prompts, [id]: "" });
-    }, 1500);
+    }
   };
 
   const pendingCount = diffs.filter((d) => d.status === "pending").length;
@@ -71,7 +91,10 @@ export default function TailoringStudio({ data, onBack, onNext }) {
           </span>
         </div>
         <button
-          onClick={onNext}
+          onClick={() => {
+            if (data) data.bulletDiffs = diffs;
+            onNext();
+          }}
           className={`flex items-center gap-2 px-5 py-2 rounded-xl font-medium text-sm transition-all duration-150 active:scale-95 shadow-sm ${
             isComplete
               ? "bg-accent text-white hover:bg-accent/90 shadow-[0_0_15px_rgba(36,138,84,0.4)]"
@@ -172,12 +195,13 @@ export default function TailoringStudio({ data, onBack, onNext }) {
                         handlePromptChange(diff.id, e.target.value)
                       }
                       onKeyDown={(e) =>
-                        e.key === "Enter" && handleRegenerate(diff.id)
+                        e.key === "Enter" &&
+                        handleRegenerate(diff.id, diff.original)
                       }
                       className="w-full pl-9 pr-10 py-2.5 bg-background border border-border rounded-xl text-sm text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all shadow-sm"
                     />
                     <button
-                      onClick={() => handleRegenerate(diff.id)}
+                      onClick={() => handleRegenerate(diff.id, diff.original)}
                       disabled={!prompts[diff.id] || isRegenerating[diff.id]}
                       className="absolute right-2 p-1.5 text-secondary hover:text-accent disabled:opacity-50 active:scale-90 transition-all"
                     >
