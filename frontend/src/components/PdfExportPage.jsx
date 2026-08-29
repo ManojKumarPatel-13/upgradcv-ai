@@ -11,7 +11,6 @@ import {
   FileText,
 } from "lucide-react";
 import confetti from "canvas-confetti";
-import html2pdf from "html2pdf.js";
 
 export default function PdfExportPage({ data, onBack, onRestart }) {
   const [isGenerating, setIsGenerating] = useState(true);
@@ -19,9 +18,13 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
   const [showToast, setShowToast] = useState(false);
   const [scanPos, setScanPos] = useState(-100);
 
-  const targetScore = data?.matchScore || 94;
-  const initialScore = Math.max(0, targetScore - 16);
-  const [rollingScore, setRollingScore] = useState(initialScore);
+  const originalScore = data?.matchScore || 74;
+  const acceptedDiffs = (data?.bulletDiffs || []).filter(
+    (d) => d.status === "accepted",
+  );
+
+  const improvedScore = Math.min(99, originalScore + acceptedDiffs.length * 6);
+  const [rollingScore, setRollingScore] = useState(originalScore);
 
   const coverLetterText =
     data?.coverLetterSnippet ||
@@ -31,9 +34,6 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
     if (!data?.resumeData) return null;
 
     const clonedData = JSON.parse(JSON.stringify(data.resumeData));
-    const acceptedDiffs = (data.bulletDiffs || []).filter(
-      (d) => d.status === "accepted",
-    );
 
     const applyDiffs = (sections) => {
       if (!sections) return;
@@ -51,7 +51,7 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
     applyDiffs(clonedData.projects);
 
     return clonedData;
-  }, [data]);
+  }, [data, acceptedDiffs]);
 
   useEffect(() => {
     let scanInterval;
@@ -73,35 +73,22 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
   }, [isGenerating]);
 
   useEffect(() => {
-    if (!isGenerating) {
-      let current = initialScore;
+    if (!isGenerating && originalScore !== improvedScore) {
+      let current = originalScore;
       const interval = setInterval(() => {
-        if (current >= targetScore) {
+        if (current >= improvedScore) {
           clearInterval(interval);
         } else {
           current += 1;
           setRollingScore(current);
         }
-      }, 40);
+      }, 50);
       return () => clearInterval(interval);
     }
-  }, [isGenerating, initialScore, targetScore]);
+  }, [isGenerating, originalScore, improvedScore]);
 
   const handleDownload = () => {
     setDownloadState("success");
-
-    const element = document.getElementById("resume-preview");
-    const opt = {
-      margin: 0.4,
-      filename: "UpgradCV_Tailored_Resume.pdf",
-      image: { type: "jpeg", quality: 1 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
-      pagebreak: { mode: "avoid-all", before: ".page-break" },
-    };
-
-    html2pdf().set(opt).from(element).save();
-
     confetti({
       particleCount: 100,
       spread: 70,
@@ -109,7 +96,10 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
       colors: ["#248A54", "#ffffff", "#E2E8E4"],
     });
 
-    setTimeout(() => setDownloadState("idle"), 3000);
+    setTimeout(() => {
+      window.print();
+      setDownloadState("idle");
+    }, 800);
   };
 
   const handleCopy = () => {
@@ -119,7 +109,7 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
   };
 
   const handleShare = async () => {
-    const shareText = `I just tailored my resume using UpgradCV and hit a ${targetScore}% match score! 🚀`;
+    const shareText = `I just tailored my resume using UpgradCV and hit a ${improvedScore}% match score! 🚀`;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -137,9 +127,43 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
 
   return (
     <div className="min-h-screen p-6 flex flex-col gap-6 max-w-7xl mx-auto relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-accent/5 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+      {/* Bulletproof Print CSS */}
+      <style type="text/css">
+        {`
+          @media print {
+            @page { 
+              size: portrait; 
+              margin: 0.5in; 
+            }
+            
+            /* Hide all app UI elements */
+            body * { 
+              visibility: hidden !important; 
+            }
+            
+            /* Unhide the preview and everything inside it */
+            #resume-preview, #resume-preview * { 
+              visibility: visible !important; 
+            }
+            
+            /* Force the preview container to fill the print page cleanly */
+            #resume-preview { 
+              position: absolute !important; 
+              left: 0 !important; 
+              top: 0 !important; 
+              width: 100% !important; 
+              margin: 0 !important; 
+              padding: 0 !important; 
+              box-shadow: none !important; 
+              background: white !important;
+            }
+          }
+        `}
+      </style>
 
-      <div className="flex justify-between items-center bg-surface/80 backdrop-blur-md p-4 rounded-2xl border border-border/50 shadow-sm z-10 animate-in slide-in-from-top-4 fade-in duration-500">
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-accent/5 blur-[120px] rounded-full pointer-events-none -z-10 print:hidden"></div>
+
+      <div className="flex justify-between items-center bg-surface/80 backdrop-blur-md p-4 rounded-2xl border border-border/50 shadow-sm z-10 animate-in slide-in-from-top-4 fade-in duration-500 print:hidden">
         <button
           onClick={onBack}
           className="flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-primary hover:bg-background active:scale-95 transition-all duration-150 font-medium text-sm"
@@ -180,256 +204,267 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 z-10">
         <div
-          className="lg:col-span-2 bg-gradient-to-br from-surface to-background rounded-2xl border border-border/50 shadow-sm flex flex-col items-center justify-start p-8 relative overflow-hidden spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500 max-h-[85vh] overflow-y-auto"
+          className="lg:col-span-2 bg-gradient-to-br from-surface to-background rounded-2xl border border-border/50 shadow-sm flex flex-col relative overflow-hidden spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500 print:hidden"
           style={{ animationDelay: "100ms" }}
         >
-          <div className="w-full max-w-[8.5in] min-h-[11in] bg-white text-black shadow-2xl relative p-8">
-            {isGenerating ? (
-              <div className="absolute inset-0 z-20 overflow-hidden bg-white">
+          {/* Scrollable Web Viewport */}
+          <div className="w-full h-[75vh] overflow-y-auto p-4 sm:p-8 flex justify-center items-start bg-black/5 dark:bg-white/5 rounded-2xl">
+            {/* The Document Canvas */}
+            <div className="w-full max-w-[800px] min-h-[1056px] bg-white text-black shadow-2xl relative p-8 sm:p-12 shrink-0">
+              {isGenerating ? (
+                <div className="absolute inset-0 z-20 overflow-hidden bg-white">
+                  <div
+                    className="absolute left-0 w-full h-32 bg-gradient-to-b from-transparent via-accent/20 to-transparent blur-md pointer-events-none"
+                    style={{ top: `${scanPos}%` }}
+                  >
+                    <div className="absolute bottom-1/2 w-full h-px bg-accent shadow-[0_0_8px_2px_rgba(36,138,84,0.8)]"></div>
+                  </div>
+                  <div className="flex flex-col gap-4 p-8 opacity-50">
+                    <div className="h-8 w-1/3 mx-auto rounded bg-gray-200 animate-pulse"></div>
+                    <div className="h-4 w-2/3 mx-auto rounded bg-gray-200 animate-pulse mb-8"></div>
+                    <div className="h-6 w-1/4 rounded bg-gray-200 animate-pulse border-b pb-2"></div>
+                    <div className="h-4 w-full rounded bg-gray-100 animate-pulse mt-2"></div>
+                    <div className="h-4 w-5/6 rounded bg-gray-100 animate-pulse mt-2"></div>
+                  </div>
+                </div>
+              ) : mergedResumeData ? (
                 <div
-                  className="absolute left-0 w-full h-32 bg-gradient-to-b from-transparent via-accent/20 to-transparent blur-md pointer-events-none"
-                  style={{ top: `${scanPos}%` }}
+                  id="resume-preview"
+                  className="font-sans text-[10.5pt] leading-[1.5] text-gray-900 w-full bg-white"
                 >
-                  <div className="absolute bottom-1/2 w-full h-px bg-accent shadow-[0_0_8px_2px_rgba(36,138,84,0.8)]"></div>
-                </div>
-                <div className="flex flex-col gap-4 p-8 opacity-50">
-                  <div className="h-8 w-1/3 mx-auto rounded bg-gray-200 animate-pulse"></div>
-                  <div className="h-4 w-2/3 mx-auto rounded bg-gray-200 animate-pulse mb-8"></div>
-                  <div className="h-6 w-1/4 rounded bg-gray-200 animate-pulse border-b pb-2"></div>
-                  <div className="h-4 w-full rounded bg-gray-100 animate-pulse mt-2"></div>
-                  <div className="h-4 w-5/6 rounded bg-gray-100 animate-pulse mt-2"></div>
-                </div>
-              </div>
-            ) : mergedResumeData ? (
-              <div
-                id="resume-preview"
-                className="font-sans text-[10.5pt] leading-[1.4] text-gray-900 w-full"
-              >
-                <div className="text-center mb-5">
-                  <h1 className="text-[22pt] font-bold uppercase tracking-wide text-black mb-1">
-                    {mergedResumeData.header?.name}
-                  </h1>
-                  <div className="text-[10pt] flex flex-wrap justify-center items-center gap-x-2 text-gray-800">
-                    {mergedResumeData.header?.email && (
-                      <span>{mergedResumeData.header.email}</span>
-                    )}
-                    {mergedResumeData.header?.phone && (
-                      <>
-                        <span className="text-gray-400">|</span>
-                        <span>{mergedResumeData.header.phone}</span>
-                      </>
-                    )}
-                    {mergedResumeData.header?.links?.map((link, i) => (
-                      <React.Fragment key={i}>
-                        <span className="text-gray-400">|</span>
-                        <span>{link.replace(/^https?:\/\//, "")}</span>
-                      </React.Fragment>
-                    ))}
+                  <div className="text-center mb-6">
+                    <h1 className="text-[24pt] font-extrabold uppercase tracking-widest text-black mb-2">
+                      {mergedResumeData.header?.name}
+                    </h1>
+                    <div className="text-[10pt] flex flex-wrap justify-center items-center gap-x-3 gap-y-1 text-gray-800">
+                      {mergedResumeData.header?.email && (
+                        <span>{mergedResumeData.header.email}</span>
+                      )}
+                      {mergedResumeData.header?.phone && (
+                        <>
+                          <span className="text-gray-400 font-light">|</span>
+                          <span>{mergedResumeData.header.phone}</span>
+                        </>
+                      )}
+                      {mergedResumeData.header?.links?.map((link, i) => (
+                        <React.Fragment key={i}>
+                          <span className="text-gray-400 font-light">|</span>
+                          <span className="text-black">
+                            {link.replace(/^https?:\/\//, "")}
+                          </span>
+                        </React.Fragment>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                {mergedResumeData.summary && (
-                  <div className="mb-4">
-                    <p className="text-justify">{mergedResumeData.summary}</p>
-                  </div>
-                )}
+                  {mergedResumeData.summary && (
+                    <div className="mb-5">
+                      <p className="text-justify">{mergedResumeData.summary}</p>
+                    </div>
+                  )}
 
-                {mergedResumeData.skills &&
-                  Object.keys(mergedResumeData.skills).length > 0 && (
-                    <div className="mb-4" style={{ pageBreakInside: "avoid" }}>
-                      <h2 className="text-[12pt] font-bold uppercase border-b border-black text-black mb-2 pb-0.5 tracking-wider">
-                        Skills Summary
-                      </h2>
-                      <div className="flex flex-col gap-1">
-                        {Object.entries(mergedResumeData.skills).map(
-                          ([category, items]) => {
-                            if (!items || items.length === 0) return null;
-                            return (
-                              <div key={category} className="flex">
-                                <span className="font-bold min-w-[100px]">
-                                  {category}:
-                                </span>
-                                <span>{items.join(", ")}</span>
-                              </div>
-                            );
-                          },
-                        )}
+                  {mergedResumeData.skills &&
+                    Object.keys(mergedResumeData.skills).length > 0 && (
+                      <div className="mt-5 mb-5 print-no-break">
+                        <h2 className="text-[13pt] font-bold uppercase border-b-2 border-black text-black mb-3 pb-1 tracking-wider">
+                          Skills Summary
+                        </h2>
+                        <div className="flex flex-col gap-1.5">
+                          {Object.entries(mergedResumeData.skills).map(
+                            ([category, items]) => {
+                              if (!items || items.length === 0) return null;
+                              return (
+                                <div
+                                  key={category}
+                                  className="grid grid-cols-[120px_1fr] gap-x-2"
+                                >
+                                  <span className="font-bold text-black">
+                                    {category}:
+                                  </span>
+                                  <span>{items.join(", ")}</span>
+                                </div>
+                              );
+                            },
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                {mergedResumeData.experience &&
-                  mergedResumeData.experience.length > 0 && (
-                    <div className="mb-4">
-                      <h2 className="text-[12pt] font-bold uppercase border-b border-black text-black mb-3 pb-0.5 tracking-wider">
-                        Experience
-                      </h2>
-                      {mergedResumeData.experience.map((job, idx) => (
-                        <div
-                          key={idx}
-                          className="mb-4"
-                          style={{ pageBreakInside: "avoid" }}
-                        >
-                          <div className="flex justify-between items-baseline font-bold text-black mb-0.5">
-                            <span>
-                              {job.title}{" "}
-                              <span className="font-normal text-gray-800 mx-1">
-                                |
-                              </span>{" "}
-                              {job.company}
-                            </span>
-                            <span className="font-normal text-gray-800 text-[10pt]">
-                              {job.date}
-                            </span>
-                          </div>
-                          {job.location && (
-                            <div className="text-[10pt] italic text-gray-700 mb-1">
-                              {job.location}
-                            </div>
-                          )}
-                          <ul className="list-disc pl-5 mt-1.5 flex flex-col gap-1 text-justify">
-                            {job.bullets?.map((b, i) => (
-                              <li key={i}>{b.text}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                {mergedResumeData.projects &&
-                  mergedResumeData.projects.length > 0 && (
-                    <div className="mb-4">
-                      <h2 className="text-[12pt] font-bold uppercase border-b border-black text-black mb-3 pb-0.5 tracking-wider">
-                        Projects
-                      </h2>
-                      {mergedResumeData.projects.map((proj, idx) => (
-                        <div
-                          key={idx}
-                          className="mb-4"
-                          style={{ pageBreakInside: "avoid" }}
-                        >
-                          <div className="flex justify-between items-baseline font-bold text-black mb-0.5">
-                            <span>
-                              {proj.name}{" "}
-                              {proj.role && (
-                                <>
-                                  <span className="font-normal text-gray-800 mx-1">
-                                    |
-                                  </span>{" "}
-                                  {proj.role}
-                                </>
-                              )}
-                            </span>
-                            {proj.date && (
+                  {mergedResumeData.experience &&
+                    mergedResumeData.experience.length > 0 && (
+                      <div className="mt-6 mb-5">
+                        <h2 className="text-[13pt] font-bold uppercase border-b-2 border-black text-black mb-4 pb-1 tracking-wider">
+                          Experience
+                        </h2>
+                        {mergedResumeData.experience.map((job, idx) => (
+                          <div key={idx} className="mb-5 print-no-break">
+                            <div className="flex justify-between items-baseline font-bold text-black mb-1">
+                              <span>
+                                {job.title}{" "}
+                                {job.company && (
+                                  <>
+                                    <span className="font-normal text-gray-400 mx-1">
+                                      |
+                                    </span>{" "}
+                                    {job.company}
+                                  </>
+                                )}
+                              </span>
                               <span className="font-normal text-gray-800 text-[10pt]">
-                                {proj.date}
+                                {job.date}
                               </span>
+                            </div>
+                            {job.location && (
+                              <div className="text-[10pt] italic text-gray-700 mb-1.5">
+                                {job.location}
+                              </div>
+                            )}
+                            <ul className="list-disc pl-5 mt-2 flex flex-col gap-1.5 text-justify">
+                              {job.bullets?.map((b, i) => (
+                                <li key={i}>{b.text}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                  {mergedResumeData.projects &&
+                    mergedResumeData.projects.length > 0 && (
+                      <div className="mt-6 mb-5">
+                        <h2 className="text-[13pt] font-bold uppercase border-b-2 border-black text-black mb-4 pb-1 tracking-wider">
+                          Projects
+                        </h2>
+                        {mergedResumeData.projects.map((proj, idx) => (
+                          <div key={idx} className="mb-5 print-no-break">
+                            <div className="flex justify-between items-baseline font-bold text-black mb-1">
+                              <span>
+                                {proj.name}{" "}
+                                {proj.role && (
+                                  <>
+                                    <span className="font-normal text-gray-400 mx-1">
+                                      |
+                                    </span>{" "}
+                                    {proj.role}
+                                  </>
+                                )}
+                              </span>
+                              {proj.date && (
+                                <span className="font-normal text-gray-800 text-[10pt]">
+                                  {proj.date}
+                                </span>
+                              )}
+                            </div>
+                            {proj.links && proj.links.length > 0 && (
+                              <div className="text-[9pt] text-gray-600 mb-1.5">
+                                {proj.links.join(" | ")}
+                              </div>
+                            )}
+                            <ul className="list-disc pl-5 mt-2 flex flex-col gap-1.5 text-justify">
+                              {proj.bullets?.map((b, i) => (
+                                <li key={i}>{b.text}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                  {mergedResumeData.education &&
+                    mergedResumeData.education.length > 0 && (
+                      <div className="mt-6 mb-5 print-no-break">
+                        <h2 className="text-[13pt] font-bold uppercase border-b-2 border-black text-black mb-4 pb-1 tracking-wider">
+                          Education
+                        </h2>
+                        {mergedResumeData.education.map((edu, idx) => (
+                          <div key={idx} className="mb-4">
+                            <div className="flex justify-between items-baseline font-bold text-black mb-1">
+                              <span>{edu.institution}</span>
+                              <span className="font-normal text-gray-800 text-[10pt]">
+                                {edu.date}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-baseline">
+                              <span className="italic">{edu.degree}</span>
+                              {edu.location && (
+                                <span className="text-[10pt] text-gray-700">
+                                  {edu.location}
+                                </span>
+                              )}
+                            </div>
+                            {edu.details && edu.details.length > 0 && (
+                              <div className="mt-1.5 text-[9.5pt] text-gray-800">
+                                {edu.details.join(" • ")}
+                              </div>
                             )}
                           </div>
-                          {proj.links && proj.links.length > 0 && (
-                            <div className="text-[9pt] text-gray-600 mb-1">
-                              {proj.links.join(" | ")}
-                            </div>
-                          )}
-                          <ul className="list-disc pl-5 mt-1.5 flex flex-col gap-1 text-justify">
-                            {proj.bullets?.map((b, i) => (
-                              <li key={i}>{b.text}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
 
-                {mergedResumeData.education &&
-                  mergedResumeData.education.length > 0 && (
-                    <div className="mb-4" style={{ pageBreakInside: "avoid" }}>
-                      <h2 className="text-[12pt] font-bold uppercase border-b border-black text-black mb-3 pb-0.5 tracking-wider">
-                        Education
+                  {(mergedResumeData.certifications?.length > 0 ||
+                    mergedResumeData.extracurriculars?.length > 0) && (
+                    <div className="mt-6 print-no-break">
+                      <h2 className="text-[13pt] font-bold uppercase border-b-2 border-black text-black mb-4 pb-1 tracking-wider">
+                        Certifications & Extracurriculars
                       </h2>
-                      {mergedResumeData.education.map((edu, idx) => (
-                        <div key={idx} className="mb-3">
-                          <div className="flex justify-between items-baseline font-bold text-black mb-0.5">
-                            <span>{edu.institution}</span>
-                            <span className="font-normal text-gray-800 text-[10pt]">
-                              {edu.date}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-baseline">
-                            <span className="italic">{edu.degree}</span>
-                            {edu.location && (
-                              <span className="text-[10pt] text-gray-700">
-                                {edu.location}
-                              </span>
-                            )}
-                          </div>
-                          {edu.details && edu.details.length > 0 && (
-                            <div className="mt-1 text-[9.5pt]">
-                              {edu.details.join(" • ")}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                      <ul className="list-disc pl-5 mt-2 flex flex-col gap-1.5 text-justify">
+                        {mergedResumeData.certifications?.map((cert, idx) => (
+                          <li key={`cert-${idx}`}>{cert}</li>
+                        ))}
+                        {mergedResumeData.extracurriculars?.map(
+                          (extra, idx) => (
+                            <li key={`extra-${idx}`}>{extra}</li>
+                          ),
+                        )}
+                      </ul>
                     </div>
                   )}
-
-                {(mergedResumeData.certifications?.length > 0 ||
-                  mergedResumeData.extracurriculars?.length > 0) && (
-                  <div style={{ pageBreakInside: "avoid" }}>
-                    <h2 className="text-[12pt] font-bold uppercase border-b border-black text-black mb-2 pb-0.5 tracking-wider">
-                      Certifications & Extracurriculars
-                    </h2>
-                    <ul className="list-disc pl-5 mt-1.5 flex flex-col gap-1 text-justify">
-                      {mergedResumeData.certifications?.map((cert, idx) => (
-                        <li key={`cert-${idx}`}>{cert}</li>
-                      ))}
-                      {mergedResumeData.extracurriculars?.map((extra, idx) => (
-                        <li key={`extra-${idx}`}>{extra}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full text-secondary">
-                Failed to generate document structure.
-              </div>
-            )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-secondary">
+                  Failed to generate document structure.
+                </div>
+              )}
+            </div>
           </div>
+        </div>
 
+        <div className="flex flex-col gap-6 print:hidden">
           {!isGenerating && (
-            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 scale-[0.95] bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-full px-6 py-3 flex items-center gap-6 animate-in slide-in-from-bottom-4 fade-in duration-700 z-50">
-              <div className="flex items-center gap-3">
+            <div className="bg-surface/95 backdrop-blur-xl border border-border shadow-md rounded-2xl p-6 flex flex-col gap-4 animate-in slide-in-from-right-8 fade-in duration-700">
+              <h3 className="text-xs uppercase tracking-wider text-secondary font-bold flex items-center justify-between">
+                Transformation Impact
+                <Sparkles className="w-4 h-4 text-accent" />
+              </h3>
+              <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-wider text-secondary font-bold">
-                    Match Score
+                  <span className="text-sm font-medium text-secondary">
+                    Original Score
                   </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-primary opacity-50 line-through">
-                      {initialScore}%
-                    </span>
-                    <ArrowRight className="w-3 h-3 text-secondary" />
-                    <span className="text-lg font-bold text-accent">
-                      {rollingScore}%
-                    </span>
-                  </div>
+                  <span className="text-2xl font-bold text-primary opacity-60 line-through decoration-red-500/50">
+                    {originalScore}%
+                  </span>
+                </div>
+                <ArrowRight className="w-6 h-6 text-border" />
+                <div className="flex flex-col items-end">
+                  <span className="text-sm font-medium text-accent">
+                    Tailored Score
+                  </span>
+                  <span className="text-4xl font-extrabold text-accent">
+                    {rollingScore}%
+                  </span>
                 </div>
               </div>
-              <div className="w-px h-8 bg-border"></div>
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-accent/10 rounded-full">
-                  <Sparkles className="w-4 h-4 text-accent" />
-                </div>
-                <span className="text-sm font-semibold text-primary">
-                  Keywords Injected
-                </span>
+              <div className="w-full bg-background rounded-full h-2 mt-2 border border-border overflow-hidden">
+                <div
+                  className="bg-accent h-full transition-all duration-1000 ease-out"
+                  style={{ width: `${rollingScore}%` }}
+                ></div>
               </div>
             </div>
           )}
-        </div>
 
-        <div className="flex flex-col gap-6">
           <div
             className="bg-gradient-to-br from-surface to-background p-6 rounded-2xl border border-border/50 shadow-sm flex-1 flex flex-col relative overflow-hidden group spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500"
             style={{ animationDelay: "200ms" }}
@@ -463,7 +498,7 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
       </div>
 
       <div
-        className="flex flex-col sm:flex-row items-center justify-between p-6 bg-surface border border-border/50 rounded-2xl shadow-sm z-10 animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500"
+        className="flex flex-col sm:flex-row items-center justify-between p-6 bg-surface border border-border/50 rounded-2xl shadow-sm z-10 animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500 print:hidden"
         style={{ animationDelay: "300ms" }}
       >
         <div className="flex items-center gap-2 mb-4 sm:mb-0">
@@ -491,7 +526,7 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
       </div>
 
       <div
-        className={`fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-surface text-primary border border-border shadow-xl px-5 py-3 rounded-full transition-all duration-300 z-50 ${
+        className={`fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-surface text-primary border border-border shadow-xl px-5 py-3 rounded-full transition-all duration-300 z-50 print:hidden ${
           showToast
             ? "translate-y-0 opacity-100"
             : "translate-y-10 opacity-0 pointer-events-none"

@@ -44,7 +44,6 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
         }
 
         const jobDescription = req.body.jobDescription;
-
         const cacheKey = crypto.createHash('sha256').update(resumeText + jobDescription).digest('hex');
 
         if (analysisCache.has(cacheKey)) {
@@ -52,85 +51,50 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
             return res.json(analysisCache.get(cacheKey));
         }
 
-        const systemPrompt = `You are an expert ATS AI. Extract the entire resume into a structured JSON format and compare it against the job description.
-        You must return a raw JSON object exactly matching this structure, with no markdown formatting or extra text:
+        const systemPrompt = `You are an expert ATS AI. You have two mandatory tasks:
+        1. Extract the resume text into a structured JSON format with ZERO DATA LOSS.
+        2. Compare it against the job description to find missing skills and inject them.
+
+        CRITICAL DIRECTIVE: Do NOT summarize, abbreviate, or delete ANY content from the original resume. Every single language, framework, tool, project, and bullet point MUST be copied into the JSON verbatim. Loss of data will result in system failure.
+
+        You must return a raw JSON object exactly matching this structure, with no markdown:
         {
-          "matchScore": <number 0-100>,
-          "coverLetterSnippet": "<A compelling 3-sentence cover letter opening based on the candidate's skills and the job description>",
-          "standoutFeatures": [<array of 3 short string observations>],
-          "areasToImprove": [<array of 2 short string observations>],
+          "matchScore": <number 0-100 based on skill ratio>,
+          "coverLetterSnippet": "<A compelling 3-sentence cover letter opening>",
+          "standoutFeatures": ["<array of 3 short strings>"],
+          "areasToImprove": ["<array of 2 short strings>"],
           "skillMatrix": {
-            "matched": [<array of found technical skills>],
-            "missing": [<array of missing technical skills>]
+            "matched": ["<array of found skills>"],
+            "missing": ["<array of missing skills>"]
           },
           "bulletDiffs": [
             {
-              "id": "<unique string id, e.g., 'exp-1' or 'proj-2'>",
-              "original": "<actual bullet point from the resume that needs improvement>",
-              "suggested": "<the rewritten bullet point incorporating missing skills>",
+              "id": "<unique string id matching the experience/project bullets below>",
+              "original": "<actual original bullet text>",
+              "suggested": "<rewritten bullet naturally injecting a MISSING keyword>",
               "status": "pending"
             }
           ],
           "resumeData": {
-            "header": {
-              "name": "<string>",
-              "email": "<string>",
-              "phone": "<string>",
-              "links": ["<array of strings like LinkedIn, GitHub URLs>"]
-            },
-            "summary": "<string or null>",
-            "skills": {
-              "Languages": ["<array of strings>"],
-              "Frameworks": ["<array of strings>"],
-              "Tools": ["<array of strings>"]
-            },
+            "header": { "name": "", "email": "", "phone": "", "links": [] },
+            "summary": "",
+            "skills": { "Languages": [], "Frameworks": [], "Tools": [] },
             "experience": [
-              {
-                "company": "<string>",
-                "title": "<string>",
-                "date": "<string>",
-                "location": "<string>",
-                "bullets": [
-                  {
-                    "id": "<must match an id in bulletDiffs if an improvement is suggested, otherwise just a unique id>",
-                    "text": "<string>"
-                  }
-                ]
-              }
+              { "company": "", "title": "", "date": "", "location": "", "bullets": [{ "id": "", "text": "" }] }
             ],
             "projects": [
-              {
-                "name": "<string>",
-                "role": "<string or null>",
-                "date": "<string or null>",
-                "links": ["<array of strings>"],
-                "bullets": [
-                  {
-                    "id": "<unique id>",
-                    "text": "<string>"
-                  }
-                ]
-              }
+              { "name": "", "role": "", "date": "", "links": [], "bullets": [{ "id": "", "text": "" }] }
             ],
             "education": [
-              {
-                "institution": "<string>",
-                "degree": "<string>",
-                "date": "<string>",
-                "location": "<string>",
-                "details": ["<array of strings like GPA or relevant coursework>"]
-              }
+              { "institution": "", "degree": "", "date": "", "location": "", "details": [] }
             ],
-            "certifications": ["<array of strings>"],
-            "extracurriculars": ["<array of strings>"]
+            "certifications": [],
+            "extracurriculars": []
           }
         }       
         
-        CRITICAL RULES:
-        1. DO NOT DELETE DATA: Map 100% of the candidate's existing experience, education, projects, skills, and contact info into the 'resumeData' object verbatim. Do not summarize or omit items.
-        2. ID MAPPING: Every bullet point in 'experience' and 'projects' must have a unique string 'id' (e.g., 'exp-1', 'proj-2'). If you suggest an improvement for a bullet, the 'id' in 'bulletDiffs' MUST exactly match the 'id' in the 'resumeData' arrays.
-        3. Calculate "matchScore" strictly based on the mathematical ratio of matched skills to total required skills.
-        4. Generate a "bulletDiff" for between 3 and 6 bullet points that can be meaningfully improved.`;
+        RULES:
+        - Generate 3 to 5 'bulletDiffs'. The 'id' MUST exactly match the 'id' assigned to that bullet in the 'resumeData' arrays.`;
 
         const fallbackModels = ["openai/gpt-oss-120b", "groq/compound", "openai/gpt-oss-20b"];
         let chatCompletion = null;
