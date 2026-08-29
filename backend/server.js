@@ -48,10 +48,11 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
         const cacheKey = crypto.createHash('sha256').update(resumeText + jobDescription).digest('hex');
 
         if (analysisCache.has(cacheKey)) {
+            console.log("Serving analysis from cache.");
             return res.json(analysisCache.get(cacheKey));
         }
 
-        const systemPrompt = `You are an expert ATS AI. Compare the provided resume against the job description.
+        const systemPrompt = `You are an expert ATS AI. Extract the entire resume into a structured JSON format and compare it against the job description.
         You must return a raw JSON object exactly matching this structure, with no markdown formatting or extra text:
         {
           "matchScore": <number 0-100>,
@@ -64,17 +65,72 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
           },
           "bulletDiffs": [
             {
-              "id": <unique number>,
-              "original": "<an actual bullet point from the resume that needs improvement>",
+              "id": "<unique string id, e.g., 'exp-1' or 'proj-2'>",
+              "original": "<actual bullet point from the resume that needs improvement>",
               "suggested": "<the rewritten bullet point incorporating missing skills>",
               "status": "pending"
             }
-          ]
+          ],
+          "resumeData": {
+            "header": {
+              "name": "<string>",
+              "email": "<string>",
+              "phone": "<string>",
+              "links": ["<array of strings like LinkedIn, GitHub URLs>"]
+            },
+            "summary": "<string or null>",
+            "skills": {
+              "Languages": ["<array of strings>"],
+              "Frameworks": ["<array of strings>"],
+              "Tools": ["<array of strings>"]
+            },
+            "experience": [
+              {
+                "company": "<string>",
+                "title": "<string>",
+                "date": "<string>",
+                "location": "<string>",
+                "bullets": [
+                  {
+                    "id": "<must match an id in bulletDiffs if an improvement is suggested, otherwise just a unique id>",
+                    "text": "<string>"
+                  }
+                ]
+              }
+            ],
+            "projects": [
+              {
+                "name": "<string>",
+                "role": "<string or null>",
+                "date": "<string or null>",
+                "links": ["<array of strings>"],
+                "bullets": [
+                  {
+                    "id": "<unique id>",
+                    "text": "<string>"
+                  }
+                ]
+              }
+            ],
+            "education": [
+              {
+                "institution": "<string>",
+                "degree": "<string>",
+                "date": "<string>",
+                "location": "<string>",
+                "details": ["<array of strings like GPA or relevant coursework>"]
+              }
+            ],
+            "certifications": ["<array of strings>"],
+            "extracurriculars": ["<array of strings>"]
+          }
         }       
         
         CRITICAL RULES:
-        - Calculate the "matchScore" strictly based on the mathematical ratio of matched skills to total required skills in the job description. Do not estimate.
-        - Generate a "bulletDiff" for EVERY bullet point in the original resume that can be meaningfully improved. Provide between 3 and 6 diffs depending on the resume length.`;
+        1. DO NOT DELETE DATA: Map 100% of the candidate's existing experience, education, projects, skills, and contact info into the 'resumeData' object verbatim. Do not summarize or omit items.
+        2. ID MAPPING: Every bullet point in 'experience' and 'projects' must have a unique string 'id' (e.g., 'exp-1', 'proj-2'). If you suggest an improvement for a bullet, the 'id' in 'bulletDiffs' MUST exactly match the 'id' in the 'resumeData' arrays.
+        3. Calculate "matchScore" strictly based on the mathematical ratio of matched skills to total required skills.
+        4. Generate a "bulletDiff" for between 3 and 6 bullet points that can be meaningfully improved.`;
 
         const fallbackModels = ["openai/gpt-oss-120b", "groq/compound", "openai/gpt-oss-20b"];
         let chatCompletion = null;
@@ -82,6 +138,7 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
 
         for (const currentModel of fallbackModels) {
             try {
+                console.log(`Attempting analysis with model: ${currentModel}...`);
                 chatCompletion = await groq.chat.completions.create({
                     messages: [
                         { role: "system", content: systemPrompt },
@@ -91,8 +148,10 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
                     temperature: 0.0,
                     response_format: { type: "json_object" }
                 });
+                console.log(`✅ Success using model: ${currentModel}`);
                 break;
             } catch (err) {
+                console.warn(`⚠️ Model ${currentModel} failed. Moving to next fallback...`);
                 lastError = err;
             }
         }
@@ -108,6 +167,7 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
         res.json(finalPayload);
 
     } catch (error) {
+        console.error("Analysis pipeline failed:", error);
         res.status(500).json({ error: "Internal server error during analysis." });
     }
 });
@@ -140,6 +200,7 @@ app.post('/api/refine', async (req, res) => {
         res.json({ refinedText: aiData.refinedText });
 
     } catch (error) {
+        console.error("Refinement failed:", error);
         res.status(500).json({ error: "Failed to refine bullet point." });
     }
 });

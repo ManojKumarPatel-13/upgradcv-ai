@@ -25,21 +25,32 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
 
   const coverLetterText =
     data?.coverLetterSnippet ||
-    "Dear Hiring Team,\n\nWith over 5 years of experience engineering scalable web applications using React and Tailwind CSS, I am excited to apply for the Senior Frontend Engineer position. My recent focus on improving UI consistency directly aligns with your current roadmap...";
+    "Dear Hiring Team,\n\nWith over 5 years of experience engineering scalable web applications using React and Tailwind CSS, I am excited to apply for the position. My recent focus on improving UI consistency directly aligns with your current roadmap...";
 
-  const finalResumeText = useMemo(() => {
-    if (!data?.originalText) return "Resume data unavailable.";
+  const mergedResumeData = useMemo(() => {
+    if (!data?.resumeData) return null;
 
-    let text = data.originalText;
+    const clonedData = JSON.parse(JSON.stringify(data.resumeData));
+    const acceptedDiffs = (data.bulletDiffs || []).filter(
+      (d) => d.status === "accepted",
+    );
 
-    if (data.bulletDiffs && Array.isArray(data.bulletDiffs)) {
-      data.bulletDiffs.forEach((diff) => {
-        if (diff.status !== "rejected") {
-          text = text.replace(diff.original, diff.suggested);
+    const applyDiffs = (sections) => {
+      if (!sections) return;
+      sections.forEach((sec) => {
+        if (sec.bullets) {
+          sec.bullets.forEach((b) => {
+            const match = acceptedDiffs.find((d) => d.id === b.id);
+            if (match) b.text = match.suggested;
+          });
         }
       });
-    }
-    return text;
+    };
+
+    applyDiffs(clonedData.experience);
+    applyDiffs(clonedData.projects);
+
+    return clonedData;
   }, [data]);
 
   useEffect(() => {
@@ -81,11 +92,12 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
 
     const element = document.getElementById("resume-preview");
     const opt = {
-      margin: 0.5,
+      margin: 0.4,
       filename: "UpgradCV_Tailored_Resume.pdf",
-      image: { type: "jpeg", quality: 0.98 },
+      image: { type: "jpeg", quality: 1 },
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+      pagebreak: { mode: "avoid-all", before: ".page-break" },
     };
 
     html2pdf().set(opt).from(element).save();
@@ -168,65 +180,226 @@ export default function PdfExportPage({ data, onBack, onRestart }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 z-10">
         <div
-          className="lg:col-span-2 bg-gradient-to-br from-surface to-background rounded-2xl border border-border/50 shadow-sm flex flex-col items-center justify-center p-8 relative overflow-hidden spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500"
+          className="lg:col-span-2 bg-gradient-to-br from-surface to-background rounded-2xl border border-border/50 shadow-sm flex flex-col items-center justify-start p-8 relative overflow-hidden spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500 max-h-[85vh] overflow-y-auto"
           style={{ animationDelay: "100ms" }}
         >
-          <div
-            id="resume-preview"
-            className={`w-full ${isGenerating ? "max-w-[500px] aspect-[1/1.4]" : "max-w-[800px] min-h-[1056px] text-left"} bg-white dark:bg-[#0D0E10] border border-border/30 rounded-lg shadow-2xl relative overflow-hidden p-8 flex flex-col gap-6 transition-all duration-700`}
-          >
+          <div className="w-full max-w-[8.5in] min-h-[11in] bg-white text-black shadow-2xl relative p-8">
             {isGenerating ? (
-              <>
+              <div className="absolute inset-0 z-20 overflow-hidden bg-white">
                 <div
-                  className="absolute left-0 w-full h-32 bg-gradient-to-b from-transparent via-accent/20 to-transparent blur-md z-20 pointer-events-none"
+                  className="absolute left-0 w-full h-32 bg-gradient-to-b from-transparent via-accent/20 to-transparent blur-md pointer-events-none"
                   style={{ top: `${scanPos}%` }}
                 >
                   <div className="absolute bottom-1/2 w-full h-px bg-accent shadow-[0_0_8px_2px_rgba(36,138,84,0.8)]"></div>
                 </div>
-
-                <div className="flex flex-col gap-2 border-b border-border/40 pb-4">
-                  <div className="h-6 w-1/2 rounded bg-border/40 animate-pulse"></div>
-                  <div className="h-3 w-1/3 rounded bg-border/40 animate-pulse"></div>
-                  <div className="h-3 w-1/4 rounded bg-border/40 animate-pulse"></div>
+                <div className="flex flex-col gap-4 p-8 opacity-50">
+                  <div className="h-8 w-1/3 mx-auto rounded bg-gray-200 animate-pulse"></div>
+                  <div className="h-4 w-2/3 mx-auto rounded bg-gray-200 animate-pulse mb-8"></div>
+                  <div className="h-6 w-1/4 rounded bg-gray-200 animate-pulse border-b pb-2"></div>
+                  <div className="h-4 w-full rounded bg-gray-100 animate-pulse mt-2"></div>
+                  <div className="h-4 w-5/6 rounded bg-gray-100 animate-pulse mt-2"></div>
+                </div>
+              </div>
+            ) : mergedResumeData ? (
+              <div
+                id="resume-preview"
+                className="font-sans text-[10.5pt] leading-[1.4] text-gray-900 w-full"
+              >
+                <div className="text-center mb-5">
+                  <h1 className="text-[22pt] font-bold uppercase tracking-wide text-black mb-1">
+                    {mergedResumeData.header?.name}
+                  </h1>
+                  <div className="text-[10pt] flex flex-wrap justify-center items-center gap-x-2 text-gray-800">
+                    {mergedResumeData.header?.email && (
+                      <span>{mergedResumeData.header.email}</span>
+                    )}
+                    {mergedResumeData.header?.phone && (
+                      <>
+                        <span className="text-gray-400">|</span>
+                        <span>{mergedResumeData.header.phone}</span>
+                      </>
+                    )}
+                    {mergedResumeData.header?.links?.map((link, i) => (
+                      <React.Fragment key={i}>
+                        <span className="text-gray-400">|</span>
+                        <span>{link.replace(/^https?:\/\//, "")}</span>
+                      </React.Fragment>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  <div className="h-4 w-1/4 rounded mb-2 bg-border/40 animate-pulse"></div>
-                  {[1, 2, 3].map((i) => (
-                    <div key={`exp1-${i}`} className="flex gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0 bg-border/40 animate-pulse"></div>
-                      <div className="flex-1 flex flex-col gap-2">
-                        <div className="h-2.5 w-full rounded bg-border/40 animate-pulse"></div>
-                        {i !== 3 && (
-                          <div className="h-2.5 w-5/6 rounded bg-border/40 animate-pulse"></div>
+                {mergedResumeData.summary && (
+                  <div className="mb-4">
+                    <p className="text-justify">{mergedResumeData.summary}</p>
+                  </div>
+                )}
+
+                {mergedResumeData.skills &&
+                  Object.keys(mergedResumeData.skills).length > 0 && (
+                    <div className="mb-4" style={{ pageBreakInside: "avoid" }}>
+                      <h2 className="text-[12pt] font-bold uppercase border-b border-black text-black mb-2 pb-0.5 tracking-wider">
+                        Skills Summary
+                      </h2>
+                      <div className="flex flex-col gap-1">
+                        {Object.entries(mergedResumeData.skills).map(
+                          ([category, items]) => {
+                            if (!items || items.length === 0) return null;
+                            return (
+                              <div key={category} className="flex">
+                                <span className="font-bold min-w-[100px]">
+                                  {category}:
+                                </span>
+                                <span>{items.join(", ")}</span>
+                              </div>
+                            );
+                          },
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
 
-                <div className="flex flex-col gap-3">
-                  <div className="h-4 w-1/4 rounded mb-2 bg-border/40 animate-pulse"></div>
-                  {[1, 2].map((i) => (
-                    <div key={`exp2-${i}`} className="flex gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0 bg-border/40 animate-pulse"></div>
-                      <div className="flex-1 flex flex-col gap-2">
-                        <div className="h-2.5 w-11/12 rounded bg-border/40 animate-pulse"></div>
-                        <div className="h-2.5 w-4/5 rounded bg-border/40 animate-pulse"></div>
-                      </div>
+                {mergedResumeData.experience &&
+                  mergedResumeData.experience.length > 0 && (
+                    <div className="mb-4">
+                      <h2 className="text-[12pt] font-bold uppercase border-b border-black text-black mb-3 pb-0.5 tracking-wider">
+                        Experience
+                      </h2>
+                      {mergedResumeData.experience.map((job, idx) => (
+                        <div
+                          key={idx}
+                          className="mb-4"
+                          style={{ pageBreakInside: "avoid" }}
+                        >
+                          <div className="flex justify-between items-baseline font-bold text-black mb-0.5">
+                            <span>
+                              {job.title}{" "}
+                              <span className="font-normal text-gray-800 mx-1">
+                                |
+                              </span>{" "}
+                              {job.company}
+                            </span>
+                            <span className="font-normal text-gray-800 text-[10pt]">
+                              {job.date}
+                            </span>
+                          </div>
+                          {job.location && (
+                            <div className="text-[10pt] italic text-gray-700 mb-1">
+                              {job.location}
+                            </div>
+                          )}
+                          <ul className="list-disc pl-5 mt-1.5 flex flex-col gap-1 text-justify">
+                            {job.bullets?.map((b, i) => (
+                              <li key={i}>{b.text}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </>
+                  )}
+
+                {mergedResumeData.projects &&
+                  mergedResumeData.projects.length > 0 && (
+                    <div className="mb-4">
+                      <h2 className="text-[12pt] font-bold uppercase border-b border-black text-black mb-3 pb-0.5 tracking-wider">
+                        Projects
+                      </h2>
+                      {mergedResumeData.projects.map((proj, idx) => (
+                        <div
+                          key={idx}
+                          className="mb-4"
+                          style={{ pageBreakInside: "avoid" }}
+                        >
+                          <div className="flex justify-between items-baseline font-bold text-black mb-0.5">
+                            <span>
+                              {proj.name}{" "}
+                              {proj.role && (
+                                <>
+                                  <span className="font-normal text-gray-800 mx-1">
+                                    |
+                                  </span>{" "}
+                                  {proj.role}
+                                </>
+                              )}
+                            </span>
+                            {proj.date && (
+                              <span className="font-normal text-gray-800 text-[10pt]">
+                                {proj.date}
+                              </span>
+                            )}
+                          </div>
+                          {proj.links && proj.links.length > 0 && (
+                            <div className="text-[9pt] text-gray-600 mb-1">
+                              {proj.links.join(" | ")}
+                            </div>
+                          )}
+                          <ul className="list-disc pl-5 mt-1.5 flex flex-col gap-1 text-justify">
+                            {proj.bullets?.map((b, i) => (
+                              <li key={i}>{b.text}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                {mergedResumeData.education &&
+                  mergedResumeData.education.length > 0 && (
+                    <div className="mb-4" style={{ pageBreakInside: "avoid" }}>
+                      <h2 className="text-[12pt] font-bold uppercase border-b border-black text-black mb-3 pb-0.5 tracking-wider">
+                        Education
+                      </h2>
+                      {mergedResumeData.education.map((edu, idx) => (
+                        <div key={idx} className="mb-3">
+                          <div className="flex justify-between items-baseline font-bold text-black mb-0.5">
+                            <span>{edu.institution}</span>
+                            <span className="font-normal text-gray-800 text-[10pt]">
+                              {edu.date}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-baseline">
+                            <span className="italic">{edu.degree}</span>
+                            {edu.location && (
+                              <span className="text-[10pt] text-gray-700">
+                                {edu.location}
+                              </span>
+                            )}
+                          </div>
+                          {edu.details && edu.details.length > 0 && (
+                            <div className="mt-1 text-[9.5pt]">
+                              {edu.details.join(" • ")}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                {(mergedResumeData.certifications?.length > 0 ||
+                  mergedResumeData.extracurriculars?.length > 0) && (
+                  <div style={{ pageBreakInside: "avoid" }}>
+                    <h2 className="text-[12pt] font-bold uppercase border-b border-black text-black mb-2 pb-0.5 tracking-wider">
+                      Certifications & Extracurriculars
+                    </h2>
+                    <ul className="list-disc pl-5 mt-1.5 flex flex-col gap-1 text-justify">
+                      {mergedResumeData.certifications?.map((cert, idx) => (
+                        <li key={`cert-${idx}`}>{cert}</li>
+                      ))}
+                      {mergedResumeData.extracurriculars?.map((extra, idx) => (
+                        <li key={`extra-${idx}`}>{extra}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             ) : (
-              <pre className="whitespace-pre-wrap font-sans text-gray-800 dark:text-gray-200 leading-relaxed font-medium text-sm">
-                {finalResumeText}
-              </pre>
+              <div className="flex items-center justify-center h-full text-secondary">
+                Failed to generate document structure.
+              </div>
             )}
           </div>
 
           {!isGenerating && (
-            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 scale-[0.95] bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-full px-6 py-3 flex items-center gap-6 animate-in slide-in-from-bottom-4 fade-in duration-700 z-30">
+            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 scale-[0.95] bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-full px-6 py-3 flex items-center gap-6 animate-in slide-in-from-bottom-4 fade-in duration-700 z-50">
               <div className="flex items-center gap-3">
                 <div className="flex flex-col">
                   <span className="text-[10px] uppercase tracking-wider text-secondary font-bold">
