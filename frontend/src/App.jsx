@@ -63,8 +63,7 @@ export default function MainApp() {
   };
 
   return (
-    /* Removed overflow-x-hidden here to fix double scrollbar */
-    <div className="min-h-screen bg-background text-primary transition-colors duration-200 relative">
+    <div className="min-h-screen p-6 flex flex-col gap-6 max-w-7xl mx-auto relative animate-in fade-in duration-500 ease-out">
       <button
         onClick={toggleTheme}
         className="fixed top-6 right-6 p-3 rounded-full bg-surface/80 backdrop-blur-md border border-border shadow-sm hover:shadow-md active:scale-95 transition-all z-50 text-primary"
