@@ -104,7 +104,7 @@ export default function UploadPage({ onAnalyze }) {
             <div className="flex items-center gap-3 text-primary font-medium text-lg h-8">
               <CurrentIcon
                 key={`small-${processStep}`}
-                className="w-5 h-5 animate-pulse text-accent animate-in spin-in-12 duration-300"
+                className="w-5 h-5 text-accent animate-in spin-in-12 duration-300"
               />
               {processSteps[processStep].text}
             </div>
@@ -188,7 +188,7 @@ export default function UploadPage({ onAnalyze }) {
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-5 py-2 bg-background border border-border rounded-lg text-sm font-medium hover:bg-border/50 transition-colors shadow-sm"
+                  className="px-5 py-2 bg-background border border-border rounded-lg text-sm font-medium hover:bg-border/50 active:scale-95 transition-all duration-150 shadow-sm"
                 >
                   Select File
                 </button>
@@ -238,7 +238,7 @@ export default function UploadPage({ onAnalyze }) {
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
             onClick={handleDemoData}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-border text-primary hover:bg-background transition-colors font-medium text-sm shadow-sm"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-border text-primary hover:bg-background active:scale-95 transition-all duration-150 font-medium text-sm shadow-sm"
           >
             <Wand2 className="w-4 h-4" />
             Try Demo Data
@@ -247,7 +247,7 @@ export default function UploadPage({ onAnalyze }) {
           <button
             onClick={startAnalysis}
             disabled={!file || !jobDescription || !isJdValid}
-            className="group relative flex-1 sm:flex-none flex items-center justify-center gap-2 px-7 py-2.5 rounded-xl bg-accent text-white font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden transition-all hover:bg-accent/90 shadow-[0_4px_14px_0_rgba(36,138,84,0.39)]"
+            className="group relative flex-1 sm:flex-none flex items-center justify-center gap-2 px-7 py-2.5 rounded-xl bg-accent text-white font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden active:scale-95 transition-all duration-150 hover:bg-accent/90 shadow-[0_4px_14px_0_rgba(36,138,84,0.39)]"
           >
             <span className="relative z-10 flex items-center gap-2">
               Analyze Match

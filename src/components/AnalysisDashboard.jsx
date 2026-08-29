@@ -47,13 +47,16 @@ export default function AnalysisDashboard({ data, onBack, onNext }) {
 
   return (
     <div className="min-h-screen p-6 flex flex-col gap-6 max-w-7xl mx-auto relative">
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-accent/5 blur-[120px] rounded-full pointer-events-none -z-10"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent/5 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+      {/* Background Blobs - Locked in a fixed layer to prevent phantom scrolling */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-accent/5 blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent/5 blur-[120px] rounded-full"></div>
+      </div>
 
-      <div className="flex justify-between items-center bg-surface/80 backdrop-blur-md p-4 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm">
+      <div className="flex justify-between items-center bg-surface/80 backdrop-blur-md p-4 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm animate-in slide-in-from-top-4 fade-in duration-500 z-10">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-primary hover:bg-background transition-colors font-medium text-sm"
+          className="flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-primary hover:bg-background active:scale-95 transition-all duration-150 font-medium text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
@@ -65,7 +68,10 @@ export default function AnalysisDashboard({ data, onBack, onNext }) {
         <div className="w-24"></div>
       </div>
 
-      <div className="bg-gradient-to-r from-accent/10 via-surface to-background p-6 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm flex items-start gap-4">
+      <div
+        className="bg-gradient-to-r from-accent/10 via-surface to-background p-6 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm flex items-start gap-4 spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500 z-10"
+        style={{ animationDelay: "100ms" }}
+      >
         <div className="p-3 bg-accent/20 rounded-xl mt-1">
           <Zap className="w-6 h-6 text-accent" />
         </div>
@@ -82,9 +88,12 @@ export default function AnalysisDashboard({ data, onBack, onNext }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 z-10">
         <div className="flex flex-col gap-6">
-          <div className="bg-gradient-to-br from-surface to-background p-8 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm flex flex-col items-center justify-center gap-4 relative overflow-hidden">
+          <div
+            className="bg-gradient-to-br from-surface to-background p-8 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm flex flex-col items-center justify-center gap-4 relative overflow-hidden spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500"
+            style={{ animationDelay: "200ms" }}
+          >
             <div className="relative flex items-center justify-center">
               <svg className="w-40 h-40 transform -rotate-90">
                 <circle
@@ -124,7 +133,10 @@ export default function AnalysisDashboard({ data, onBack, onNext }) {
             ></div>
           </div>
 
-          <div className="bg-gradient-to-br from-surface to-background p-6 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm flex-1">
+          <div
+            className="bg-gradient-to-br from-surface to-background p-6 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm flex-1 spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500"
+            style={{ animationDelay: "300ms" }}
+          >
             <h3 className="font-semibold text-lg mb-5 flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 text-accent" />
               Standout Features
@@ -143,7 +155,10 @@ export default function AnalysisDashboard({ data, onBack, onNext }) {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-surface to-background p-6 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm flex flex-col gap-8">
+        <div
+          className="bg-gradient-to-br from-surface to-background p-6 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm flex flex-col gap-8 spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500"
+          style={{ animationDelay: "400ms" }}
+        >
           <div>
             <h2 className="font-semibold text-lg mb-1">
               Comparative Skill Matrix
@@ -167,7 +182,7 @@ export default function AnalysisDashboard({ data, onBack, onNext }) {
                         <span className="text-accent font-medium">100%</span>
                       </div>
                       <div className="w-full h-2 bg-background rounded-full overflow-hidden border border-border/50">
-                        <div className="h-full bg-accent w-full shadow-[0_0_10px_rgba(36,138,84,0.5)]"></div>
+                        <div className="h-full bg-accent w-full shadow-[0_0_10px_rgba(36,138,84,0.5)] transition-all duration-1000 ease-out"></div>
                       </div>
                     </div>
                   ))}
@@ -201,7 +216,10 @@ export default function AnalysisDashboard({ data, onBack, onNext }) {
         </div>
 
         <div className="flex flex-col gap-6">
-          <div className="bg-gradient-to-br from-surface to-background p-6 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm">
+          <div
+            className="bg-gradient-to-br from-surface to-background p-6 rounded-2xl border border-border/50 ring-1 ring-black/5 dark:ring-white/5 shadow-sm spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500"
+            style={{ animationDelay: "500ms" }}
+          >
             <h3 className="font-semibold text-lg mb-5 flex items-center gap-2">
               <XCircle className="w-5 h-5 text-red-500" />
               Areas to Improve
@@ -219,7 +237,10 @@ export default function AnalysisDashboard({ data, onBack, onNext }) {
             </ul>
           </div>
 
-          <div className="bg-accent rounded-2xl p-8 shadow-[0_8px_30px_rgb(36,138,84,0.3)] relative overflow-hidden flex-1 flex flex-col justify-center text-white group">
+          <div
+            className="bg-accent rounded-2xl p-8 shadow-[0_8px_30px_rgb(36,138,84,0.3)] relative overflow-hidden flex-1 flex flex-col justify-center text-white group animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500"
+            style={{ animationDelay: "600ms" }}
+          >
             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
 
             <h2 className="text-3xl font-bold mb-2">
@@ -232,7 +253,7 @@ export default function AnalysisDashboard({ data, onBack, onNext }) {
 
             <button
               onClick={onNext}
-              className="w-full flex items-center justify-between bg-white text-accent px-6 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full flex items-center justify-between bg-white text-accent px-6 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-150 active:scale-[0.97]"
             >
               Open Tailoring Studio
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

@@ -58,7 +58,7 @@ export default function TailoringStudio({ data, onBack, onNext }) {
       <div className="flex justify-between items-center bg-surface/80 backdrop-blur-md p-4 rounded-2xl border border-border/50 shadow-sm z-10">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-primary hover:bg-background transition-colors font-medium text-sm"
+          className="flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-primary hover:bg-background active:scale-95 transition-all duration-150 font-medium text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           Analysis
@@ -72,7 +72,7 @@ export default function TailoringStudio({ data, onBack, onNext }) {
         </div>
         <button
           onClick={onNext}
-          className={`flex items-center gap-2 px-5 py-2 rounded-xl font-medium text-sm transition-all shadow-sm ${
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl font-medium text-sm transition-all duration-150 active:scale-95 shadow-sm ${
             isComplete
               ? "bg-accent text-white hover:bg-accent/90 shadow-[0_0_15px_rgba(36,138,84,0.4)]"
               : "bg-surface border border-border text-primary hover:bg-background"
@@ -84,16 +84,17 @@ export default function TailoringStudio({ data, onBack, onNext }) {
       </div>
 
       <div className="flex flex-col gap-8 flex-1 z-10">
-        {diffs.map((diff) => (
+        {diffs.map((diff, index) => (
           <div
             key={diff.id}
-            className={`bg-surface rounded-2xl border transition-all duration-500 overflow-hidden ${
+            className={`bg-surface rounded-2xl border transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-8 fade-in fill-mode-both spotlight-card ${
               diff.status === "accepted"
                 ? "border-accent/50 shadow-[0_0_20px_rgba(36,138,84,0.1)]"
                 : diff.status === "rejected"
                   ? "border-border opacity-60"
                   : "border-border shadow-linear"
             }`}
+            style={{ animationDelay: `${index * 150}ms` }}
           >
             <div className="flex items-center justify-between p-4 border-b border-border/50 bg-background/50">
               <span className="text-xs font-semibold text-secondary uppercase tracking-wider">
@@ -104,13 +105,13 @@ export default function TailoringStudio({ data, onBack, onNext }) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleStatusChange(diff.id, "rejected")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors text-sm font-medium"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-secondary hover:text-red-500 hover:bg-red-500/10 active:scale-95 transition-all text-sm font-medium"
                   >
                     <X className="w-4 h-4" /> Ignore
                   </button>
                   <button
                     onClick={() => handleStatusChange(diff.id, "accepted")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors text-sm font-medium"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-white hover:bg-accent/90 active:scale-95 transition-all text-sm font-medium shadow-lg shadow-accent/20"
                   >
                     <Check className="w-4 h-4" /> Accept AI Suggestion
                   </button>
@@ -178,7 +179,7 @@ export default function TailoringStudio({ data, onBack, onNext }) {
                     <button
                       onClick={() => handleRegenerate(diff.id)}
                       disabled={!prompts[diff.id] || isRegenerating[diff.id]}
-                      className="absolute right-2 p-1.5 text-secondary hover:text-accent disabled:opacity-50 transition-colors"
+                      className="absolute right-2 p-1.5 text-secondary hover:text-accent disabled:opacity-50 active:scale-90 transition-all"
                     >
                       <Send className="w-4 h-4" />
                     </button>

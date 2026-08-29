@@ -4,7 +4,6 @@
 
 @layer base {
   :root {
-    /* Light Mode: Greenish White Theme */
     --background: 242 245 243;
     --surface: 255 255 255;
     --text-primary: 26 47 35;
@@ -14,7 +13,6 @@
   }
 
   .dark {
-    /* Dark Mode: Linear Style */
     --background: 8 9 10;
     --surface: 18 19 21;
     --text-primary: 244 245 246;
@@ -22,10 +20,48 @@
     --border: 34 36 40;
     --accent: 94 106 210;
   }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--border));
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--text-secondary));
+  }
 }
 
 @layer base {
   body {
-    @apply bg-background text-primary antialiased selection:bg-accent/20;
+    @apply bg-background text-primary antialiased selection:bg-accent/30 selection:text-accent;
   }
+}
+
+/* Mouse-Tracking Spotlight Base */
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+}
+.spotlight-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    800px circle at var(--mouse-x, 0) var(--mouse-y, 0),
+    rgba(var(--accent), 0.05),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 1;
+}
+.spotlight-card:hover::before {
+  opacity: 1;
 }

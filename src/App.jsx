@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sun, Moon } from "lucide-react";
 import UploadPage from "./components/UploadPage";
 import AnalysisDashboard from "./components/AnalysisDashboard";
@@ -43,6 +43,15 @@ export default function MainApp() {
   const [analysisData, setAnalysisData] = useState(null);
   const [isDark, setIsDark] = useState(false);
 
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      document.documentElement.style.setProperty("--mouse-x", `${e.clientX}px`);
+      document.documentElement.style.setProperty("--mouse-y", `${e.clientY}px`);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
   const handleAnalyze = ({ file, jobDescription }) => {
     setAnalysisData(MOCK_ANALYSIS_DATA);
     setAppState("analysis");
@@ -54,41 +63,47 @@ export default function MainApp() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-primary transition-colors duration-200 selection:bg-accent/20 relative">
+    /* Removed overflow-x-hidden here to fix double scrollbar */
+    <div className="min-h-screen bg-background text-primary transition-colors duration-200 relative">
       <button
         onClick={toggleTheme}
-        className="fixed top-6 right-6 p-3 rounded-full bg-surface/80 backdrop-blur-md border border-border shadow-sm hover:shadow-md hover:scale-105 transition-all z-50 text-primary"
+        className="fixed top-6 right-6 p-3 rounded-full bg-surface/80 backdrop-blur-md border border-border shadow-sm hover:shadow-md active:scale-95 transition-all z-50 text-primary"
       >
         {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
       </button>
 
-      {appState === "upload" && <UploadPage onAnalyze={handleAnalyze} />}
+      <div
+        key={appState}
+        className="animate-in fade-in zoom-in-95 duration-500 ease-out fill-mode-both"
+      >
+        {appState === "upload" && <UploadPage onAnalyze={handleAnalyze} />}
 
-      {appState === "analysis" && (
-        <AnalysisDashboard
-          data={analysisData}
-          onBack={() => setAppState("upload")}
-          onNext={() => setAppState("tailoring")}
-        />
-      )}
+        {appState === "analysis" && (
+          <AnalysisDashboard
+            data={analysisData}
+            onBack={() => setAppState("upload")}
+            onNext={() => setAppState("tailoring")}
+          />
+        )}
 
-      {appState === "tailoring" && (
-        <TailoringStudio
-          data={analysisData}
-          onBack={() => setAppState("analysis")}
-          onNext={() => setAppState("export")}
-        />
-      )}
+        {appState === "tailoring" && (
+          <TailoringStudio
+            data={analysisData}
+            onBack={() => setAppState("analysis")}
+            onNext={() => setAppState("export")}
+          />
+        )}
 
-      {appState === "export" && (
-        <PdfExportPage
-          onBack={() => setAppState("tailoring")}
-          onRestart={() => {
-            setAnalysisData(null);
-            setAppState("upload");
-          }}
-        />
-      )}
+        {appState === "export" && (
+          <PdfExportPage
+            onBack={() => setAppState("tailoring")}
+            onRestart={() => {
+              setAnalysisData(null);
+              setAppState("upload");
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
