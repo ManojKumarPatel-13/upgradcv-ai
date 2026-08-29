@@ -1,122 +1,65 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useState } from "react";
+import UploadPage from "./components/UploadPage";
+import AnalysisDashboard from "./components/AnalysisDashboard";
+import PdfExportPage from "./components/PdfExportPage";
 
-function App() {
-  const [count, setCount] = useState(0)
+const MOCK_ANALYSIS_DATA = {
+  matchScore: 78,
+  standoutFeatures: [
+    "Strong React fundamentals",
+    "Leadership background",
+    "Agile methodology",
+  ],
+  areasToImprove: [
+    "Missing Next.js keywords",
+    "Tailwind CSS not explicitly mentioned",
+  ],
+  skillMatrix: {
+    matched: ["React", "JavaScript", "Frontend", "UI/UX"],
+    missing: ["Next.js", "Tailwind CSS", "Server Components"],
+  },
+  bulletDiffs: [
+    {
+      id: 1,
+      original: "Built web applications using React and CSS.",
+      suggested:
+        "Engineered scalable web applications using React and Tailwind CSS, improving UI consistency.",
+      status: "pending",
+    },
+  ],
+};
+
+export default function MainApp() {
+  const [appState, setAppState] = useState("upload");
+  const [analysisData, setAnalysisData] = useState(null);
+
+  const handleAnalyze = ({ file, jobDescription }) => {
+    setAnalysisData(MOCK_ANALYSIS_DATA);
+    setAppState("analysis");
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="min-h-screen bg-background text-primary transition-colors duration-200">
+      <button
+        onClick={() => document.documentElement.classList.toggle("dark")}
+        className="absolute top-4 right-4 px-3 py-1.5 text-xs font-medium border border-border rounded bg-surface hover:bg-border/50 z-50"
+      >
+        Toggle Theme
+      </button>
 
-      <div className="ticks"></div>
+      {appState === "upload" && <UploadPage onAnalyze={handleAnalyze} />}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {appState === "analysis" && (
+        <AnalysisDashboard
+          data={analysisData}
+          onBack={() => setAppState("upload")}
+          onNext={() => setAppState("export")}
+        />
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {appState === "export" && (
+        <PdfExportPage onBack={() => setAppState("analysis")} />
+      )}
+    </div>
+  );
 }
-
-export default App
