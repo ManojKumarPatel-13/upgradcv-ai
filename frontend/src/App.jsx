@@ -21,12 +21,10 @@ export default function MainApp() {
 
   const handleAnalyze = async ({ file, jobDescription }) => {
     try {
-      // 1. Pack the file and text into a FormData object
       const formData = new FormData();
       formData.append("resume", file);
       formData.append("jobDescription", jobDescription);
 
-      // 2. Send it to your local Node server
       const response = await fetch("http://localhost:4000/api/analyze", {
         method: "POST",
         body: formData,
@@ -36,10 +34,8 @@ export default function MainApp() {
         throw new Error("Server failed to process document");
       }
 
-      // 3. Extract the real JSON from the AI
       const liveAiData = await response.json();
 
-      // 4. Update the state to transition the page
       setAnalysisData(liveAiData);
       setAppState("analysis");
     } catch (error) {
@@ -47,7 +43,6 @@ export default function MainApp() {
       alert(
         "Failed to connect to the backend. Make sure your server is running on port 4000.",
       );
-      // Fallback to upload state so the UI doesn't get stuck on a loading screen
       setAppState("upload");
     }
   };
@@ -90,6 +85,7 @@ export default function MainApp() {
 
         {appState === "export" && (
           <PdfExportPage
+            data={analysisData}
             onBack={() => setAppState("tailoring")}
             onRestart={() => {
               setAnalysisData(null);

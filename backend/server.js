@@ -29,7 +29,6 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
             return res.status(400).json({ error: "Missing job description text." });
         }
 
-        // 1. Extract text using modern pdf2json
         const resumeText = await new Promise((resolve, reject) => {
             const pdfParser = new PDFParser(null, 1);
 
@@ -41,7 +40,6 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
             pdfParser.parseBuffer(req.file.buffer);
         });
 
-        // 2. EDGE CASE: Catch scanned images or unreadable PDFs
         if (resumeText.trim().length < 50) {
             return res.status(400).json({
                 error: "We detected a scanned image or unreadable file. Please upload a standard text-based PDF."
@@ -50,11 +48,11 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
 
         const jobDescription = req.body.jobDescription;
 
-        // 3. Strict JSON formatting prompt with updated rules for Score and Bullets
         const systemPrompt = `You are an expert ATS AI. Compare the provided resume against the job description.
         You must return a raw JSON object exactly matching this structure, with no markdown formatting or extra text:
         {
           "matchScore": <number 0-100>,
+          "coverLetterSnippet": "<A compelling 3-sentence cover letter opening based on the candidate's skills and the job description>",
           "standoutFeatures": [<array of 3 short string observations>],
           "areasToImprove": [<array of 2 short string observations>],
           "skillMatrix": {
@@ -75,7 +73,6 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
         - Calculate the "matchScore" strictly based on the mathematical ratio of matched skills to total required skills in the job description. Do not estimate.
         - Generate a "bulletDiff" for EVERY bullet point in the original resume that can be meaningfully improved. Provide between 3 and 6 diffs depending on the resume length.`;
 
-        // 4. The resilient API fallback queue
         const fallbackModels = [
             "openai/gpt-oss-120b",
             "groq/compound",
@@ -95,7 +92,7 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
                         { role: "user", content: `RESUME TEXT:\n${resumeText}\n\nJOB DESCRIPTION:\n${jobDescription}` }
                     ],
                     model: currentModel,
-                    temperature: 0.0, // Swapped to 0.0 for maximum mathematical determinism
+                    temperature: 0.0,
                     response_format: { type: "json_object" }
                 });
 
@@ -112,9 +109,9 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
             throw new Error(`All LLM fallback models failed. Last error: ${lastError.message}`);
         }
 
-        // 5. Parse and return the JSON
         const aiData = JSON.parse(chatCompletion.choices[0].message.content);
-        res.json(aiData);
+
+        res.json({ ...aiData, originalText: resumeText });
 
     } catch (error) {
         console.error("Analysis pipeline failed:", error);

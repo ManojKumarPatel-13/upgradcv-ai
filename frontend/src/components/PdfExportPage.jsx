@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Download,
   ArrowLeft,
@@ -7,18 +7,40 @@ import {
   Share2,
   RefreshCw,
   Copy,
-  Check,
   ArrowRight,
   FileText,
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import html2pdf from "html2pdf.js";
 
-export default function PdfExportPage({ onBack, onRestart }) {
+export default function PdfExportPage({ data, onBack, onRestart }) {
   const [isGenerating, setIsGenerating] = useState(true);
   const [downloadState, setDownloadState] = useState("idle");
   const [showToast, setShowToast] = useState(false);
   const [scanPos, setScanPos] = useState(-100);
-  const [rollingScore, setRollingScore] = useState(78);
+
+  const targetScore = data?.matchScore || 94;
+  const initialScore = Math.max(0, targetScore - 16);
+  const [rollingScore, setRollingScore] = useState(initialScore);
+
+  const coverLetterText =
+    data?.coverLetterSnippet ||
+    "Dear Hiring Team,\n\nWith over 5 years of experience engineering scalable web applications using React and Tailwind CSS, I am excited to apply for the Senior Frontend Engineer position. My recent focus on improving UI consistency directly aligns with your current roadmap...";
+
+  const finalResumeText = useMemo(() => {
+    if (!data?.originalText) return "Resume data unavailable.";
+
+    let text = data.originalText;
+
+    if (data.bulletDiffs && Array.isArray(data.bulletDiffs)) {
+      data.bulletDiffs.forEach((diff) => {
+        if (diff.status !== "rejected") {
+          text = text.replace(diff.original, diff.suggested);
+        }
+      });
+    }
+    return text;
+  }, [data]);
 
   useEffect(() => {
     let scanInterval;
@@ -41,9 +63,9 @@ export default function PdfExportPage({ onBack, onRestart }) {
 
   useEffect(() => {
     if (!isGenerating) {
-      let current = 78;
+      let current = initialScore;
       const interval = setInterval(() => {
-        if (current >= 94) {
+        if (current >= targetScore) {
           clearInterval(interval);
         } else {
           current += 1;
@@ -52,25 +74,53 @@ export default function PdfExportPage({ onBack, onRestart }) {
       }, 40);
       return () => clearInterval(interval);
     }
-  }, [isGenerating]);
+  }, [isGenerating, initialScore, targetScore]);
 
   const handleDownload = () => {
     setDownloadState("success");
+
+    const element = document.getElementById("resume-preview");
+    const opt = {
+      margin: 0.5,
+      filename: "UpgradCV_Tailored_Resume.pdf",
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+    };
+
+    html2pdf().set(opt).from(element).save();
+
     confetti({
       particleCount: 100,
       spread: 70,
       origin: { y: 0.6 },
       colors: ["#248A54", "#ffffff", "#E2E8E4"],
     });
+
     setTimeout(() => setDownloadState("idle"), 3000);
   };
 
   const handleCopy = () => {
     setShowToast(true);
-    navigator.clipboard.writeText(
-      "Dear Hiring Team,\n\nWith over 5 years of experience engineering scalable web applications using React and Tailwind CSS, I am excited to apply for the Senior Frontend Engineer position. My recent focus on improving UI consistency directly aligns with your current roadmap...",
-    );
+    navigator.clipboard.writeText(coverLetterText);
     setTimeout(() => setShowToast(false), 3000);
+  };
+
+  const handleShare = async () => {
+    const shareText = `I just tailored my resume using UpgradCV and hit a ${targetScore}% match score! 🚀`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "UpgradCV Match Score",
+          text: shareText,
+        });
+      } catch (err) {
+        console.error("User canceled share", err);
+      }
+    } else {
+      navigator.clipboard.writeText(shareText);
+      alert("Score text copied to clipboard!");
+    }
   };
 
   return (
@@ -121,71 +171,58 @@ export default function PdfExportPage({ onBack, onRestart }) {
           className="lg:col-span-2 bg-gradient-to-br from-surface to-background rounded-2xl border border-border/50 shadow-sm flex flex-col items-center justify-center p-8 relative overflow-hidden spotlight-card animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500"
           style={{ animationDelay: "100ms" }}
         >
-          <div className="w-full max-w-[500px] aspect-[1/1.4] bg-white dark:bg-[#0D0E10] border border-border/30 rounded-lg shadow-2xl relative overflow-hidden p-8 flex flex-col gap-6">
-            {isGenerating && (
-              <div
-                className="absolute left-0 w-full h-32 bg-gradient-to-b from-transparent via-accent/20 to-transparent blur-md z-20 pointer-events-none"
-                style={{ top: `${scanPos}%` }}
-              >
-                <div className="absolute bottom-1/2 w-full h-px bg-accent shadow-[0_0_8px_2px_rgba(36,138,84,0.8)]"></div>
-              </div>
+          <div
+            id="resume-preview"
+            className={`w-full ${isGenerating ? "max-w-[500px] aspect-[1/1.4]" : "max-w-[800px] min-h-[1056px] text-left"} bg-white dark:bg-[#0D0E10] border border-border/30 rounded-lg shadow-2xl relative overflow-hidden p-8 flex flex-col gap-6 transition-all duration-700`}
+          >
+            {isGenerating ? (
+              <>
+                <div
+                  className="absolute left-0 w-full h-32 bg-gradient-to-b from-transparent via-accent/20 to-transparent blur-md z-20 pointer-events-none"
+                  style={{ top: `${scanPos}%` }}
+                >
+                  <div className="absolute bottom-1/2 w-full h-px bg-accent shadow-[0_0_8px_2px_rgba(36,138,84,0.8)]"></div>
+                </div>
+
+                <div className="flex flex-col gap-2 border-b border-border/40 pb-4">
+                  <div className="h-6 w-1/2 rounded bg-border/40 animate-pulse"></div>
+                  <div className="h-3 w-1/3 rounded bg-border/40 animate-pulse"></div>
+                  <div className="h-3 w-1/4 rounded bg-border/40 animate-pulse"></div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <div className="h-4 w-1/4 rounded mb-2 bg-border/40 animate-pulse"></div>
+                  {[1, 2, 3].map((i) => (
+                    <div key={`exp1-${i}`} className="flex gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0 bg-border/40 animate-pulse"></div>
+                      <div className="flex-1 flex flex-col gap-2">
+                        <div className="h-2.5 w-full rounded bg-border/40 animate-pulse"></div>
+                        {i !== 3 && (
+                          <div className="h-2.5 w-5/6 rounded bg-border/40 animate-pulse"></div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <div className="h-4 w-1/4 rounded mb-2 bg-border/40 animate-pulse"></div>
+                  {[1, 2].map((i) => (
+                    <div key={`exp2-${i}`} className="flex gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0 bg-border/40 animate-pulse"></div>
+                      <div className="flex-1 flex flex-col gap-2">
+                        <div className="h-2.5 w-11/12 rounded bg-border/40 animate-pulse"></div>
+                        <div className="h-2.5 w-4/5 rounded bg-border/40 animate-pulse"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <pre className="whitespace-pre-wrap font-sans text-gray-800 dark:text-gray-200 leading-relaxed font-medium text-sm">
+                {finalResumeText}
+              </pre>
             )}
-
-            <div className="flex flex-col gap-2 border-b border-border/40 pb-4">
-              <div
-                className={`h-6 w-1/2 rounded ${isGenerating ? "bg-border/40 animate-pulse" : "bg-primary/80"}`}
-              ></div>
-              <div
-                className={`h-3 w-1/3 rounded ${isGenerating ? "bg-border/40 animate-pulse" : "bg-secondary/60"}`}
-              ></div>
-              <div
-                className={`h-3 w-1/4 rounded ${isGenerating ? "bg-border/40 animate-pulse" : "bg-secondary/60"}`}
-              ></div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <div
-                className={`h-4 w-1/4 rounded mb-2 ${isGenerating ? "bg-border/40 animate-pulse" : "bg-primary/70"}`}
-              ></div>
-              {[1, 2, 3].map((i) => (
-                <div key={`exp1-${i}`} className="flex gap-3">
-                  <div
-                    className={`w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0 ${isGenerating ? "bg-border/40 animate-pulse" : "bg-accent/80"}`}
-                  ></div>
-                  <div className="flex-1 flex flex-col gap-2">
-                    <div
-                      className={`h-2.5 w-full rounded ${isGenerating ? "bg-border/40 animate-pulse" : "bg-primary/60"}`}
-                    ></div>
-                    {i !== 3 && (
-                      <div
-                        className={`h-2.5 w-5/6 rounded ${isGenerating ? "bg-border/40 animate-pulse" : "bg-primary/60"}`}
-                      ></div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <div
-                className={`h-4 w-1/4 rounded mb-2 ${isGenerating ? "bg-border/40 animate-pulse" : "bg-primary/70"}`}
-              ></div>
-              {[1, 2].map((i) => (
-                <div key={`exp2-${i}`} className="flex gap-3">
-                  <div
-                    className={`w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0 ${isGenerating ? "bg-border/40 animate-pulse" : "bg-accent/80"}`}
-                  ></div>
-                  <div className="flex-1 flex flex-col gap-2">
-                    <div
-                      className={`h-2.5 w-11/12 rounded ${isGenerating ? "bg-border/40 animate-pulse" : "bg-primary/60"}`}
-                    ></div>
-                    <div
-                      className={`h-2.5 w-4/5 rounded ${isGenerating ? "bg-border/40 animate-pulse" : "bg-primary/60"}`}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
           {!isGenerating && (
@@ -197,7 +234,7 @@ export default function PdfExportPage({ onBack, onRestart }) {
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-primary opacity-50 line-through">
-                      78%
+                      {initialScore}%
                     </span>
                     <ArrowRight className="w-3 h-3 text-secondary" />
                     <span className="text-lg font-bold text-accent">
@@ -212,7 +249,7 @@ export default function PdfExportPage({ onBack, onRestart }) {
                   <Sparkles className="w-4 h-4 text-accent" />
                 </div>
                 <span className="text-sm font-semibold text-primary">
-                  +3 Keywords Injected
+                  Keywords Injected
                 </span>
               </div>
             </div>
@@ -237,15 +274,8 @@ export default function PdfExportPage({ onBack, onRestart }) {
               improved resume and the job description.
             </p>
 
-            <div className="flex-1 bg-background/50 border border-border/50 rounded-xl p-4 mb-4 text-sm text-primary leading-relaxed relative z-10">
-              Dear Hiring Team,
-              <br />
-              <br />
-              With over 5 years of experience engineering scalable web
-              applications using React and Tailwind CSS, I am excited to apply
-              for the Senior Frontend Engineer position. My recent focus on
-              improving UI consistency directly aligns with your current
-              roadmap...
+            <div className="flex-1 bg-background/50 border border-border/50 rounded-xl p-4 mb-4 text-sm text-primary leading-relaxed relative z-10 whitespace-pre-wrap">
+              {coverLetterText}
             </div>
 
             <button
@@ -270,7 +300,10 @@ export default function PdfExportPage({ onBack, onRestart }) {
           </span>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-[#0A66C2]/20 text-[#0A66C2] bg-[#0A66C2]/5 hover:bg-[#0A66C2]/10 active:scale-95 transition-all duration-150 font-medium text-sm">
+          <button
+            onClick={handleShare}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-[#0A66C2]/20 text-[#0A66C2] bg-[#0A66C2]/5 hover:bg-[#0A66C2]/10 active:scale-95 transition-all duration-150 font-medium text-sm"
+          >
             <Share2 className="w-4 h-4" />
             Share Score
           </button>
