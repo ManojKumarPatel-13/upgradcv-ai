@@ -5,39 +5,6 @@ import AnalysisDashboard from "./components/AnalysisDashboard";
 import TailoringStudio from "./components/TailoringStudio";
 import PdfExportPage from "./components/PdfExportPage";
 
-const MOCK_ANALYSIS_DATA = {
-  matchScore: 78,
-  standoutFeatures: [
-    "Strong React fundamentals",
-    "Leadership background",
-    "Agile methodology",
-  ],
-  areasToImprove: [
-    "Missing Next.js keywords",
-    "Tailwind CSS not explicitly mentioned",
-  ],
-  skillMatrix: {
-    matched: ["React", "JavaScript", "Frontend", "UI/UX"],
-    missing: ["Next.js", "Tailwind CSS", "Server Components"],
-  },
-  bulletDiffs: [
-    {
-      id: 1,
-      original: "Built web applications using React and CSS.",
-      suggested:
-        "Engineered scalable web applications using React and Tailwind CSS, improving UI consistency.",
-      status: "pending",
-    },
-    {
-      id: 2,
-      original: "Managed a team of developers.",
-      suggested:
-        "Directed a cross-functional team of 5 developers using Agile methodologies to deliver features 20% faster.",
-      status: "pending",
-    },
-  ],
-};
-
 export default function MainApp() {
   const [appState, setAppState] = useState("upload");
   const [analysisData, setAnalysisData] = useState(null);
@@ -52,9 +19,37 @@ export default function MainApp() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  const handleAnalyze = ({ file, jobDescription }) => {
-    setAnalysisData(MOCK_ANALYSIS_DATA);
-    setAppState("analysis");
+  const handleAnalyze = async ({ file, jobDescription }) => {
+    try {
+      // 1. Pack the file and text into a FormData object
+      const formData = new FormData();
+      formData.append("resume", file);
+      formData.append("jobDescription", jobDescription);
+
+      // 2. Send it to your local Node server
+      const response = await fetch("http://localhost:4000/api/analyze", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Server failed to process document");
+      }
+
+      // 3. Extract the real JSON from the AI
+      const liveAiData = await response.json();
+
+      // 4. Update the state to transition the page
+      setAnalysisData(liveAiData);
+      setAppState("analysis");
+    } catch (error) {
+      console.error("API Error:", error);
+      alert(
+        "Failed to connect to the backend. Make sure your server is running on port 4000.",
+      );
+      // Fallback to upload state so the UI doesn't get stuck on a loading screen
+      setAppState("upload");
+    }
   };
 
   const toggleTheme = () => {
@@ -63,7 +58,7 @@ export default function MainApp() {
   };
 
   return (
-    <div className="min-h-screen p-6 flex flex-col gap-6 max-w-7xl mx-auto relative animate-in fade-in duration-500 ease-out">
+    <div className="min-h-screen bg-background text-primary transition-colors duration-200 relative">
       <button
         onClick={toggleTheme}
         className="fixed top-6 right-6 p-3 rounded-full bg-surface/80 backdrop-blur-md border border-border shadow-sm hover:shadow-md active:scale-95 transition-all z-50 text-primary"
