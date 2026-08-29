@@ -1,10 +1,10 @@
 import React, { useState } from "react";
+import { Sun, Moon } from "lucide-react";
 import UploadPage from "./components/UploadPage";
 import AnalysisDashboard from "./components/AnalysisDashboard";
 import TailoringStudio from "./components/TailoringStudio";
 import PdfExportPage from "./components/PdfExportPage";
 
-// Mock data acting as our AI backend response
 const MOCK_ANALYSIS_DATA = {
   matchScore: 78,
   standoutFeatures: [
@@ -39,24 +39,27 @@ const MOCK_ANALYSIS_DATA = {
 };
 
 export default function MainApp() {
-  // App States: 'upload' | 'analysis' | 'tailoring' | 'export'
   const [appState, setAppState] = useState("upload");
   const [analysisData, setAnalysisData] = useState(null);
+  const [isDark, setIsDark] = useState(false);
 
   const handleAnalyze = ({ file, jobDescription }) => {
-    // Simulated API call
     setAnalysisData(MOCK_ANALYSIS_DATA);
     setAppState("analysis");
   };
 
+  const toggleTheme = () => {
+    document.documentElement.classList.toggle("dark");
+    setIsDark(!isDark);
+  };
+
   return (
-    <div className="min-h-screen bg-background text-primary transition-colors duration-200 selection:bg-accent/20">
-      {/* Global Theme Toggle */}
+    <div className="min-h-screen bg-background text-primary transition-colors duration-200 selection:bg-accent/20 relative">
       <button
-        onClick={() => document.documentElement.classList.toggle("dark")}
-        className="absolute top-4 right-4 px-3 py-1.5 text-xs font-medium border border-border rounded-lg bg-surface hover:bg-border/50 z-50 shadow-sm"
+        onClick={toggleTheme}
+        className="fixed top-6 right-6 p-3 rounded-full bg-surface/80 backdrop-blur-md border border-border shadow-sm hover:shadow-md hover:scale-105 transition-all z-50 text-primary"
       >
-        Toggle Theme
+        {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
       </button>
 
       {appState === "upload" && <UploadPage onAnalyze={handleAnalyze} />}
@@ -78,7 +81,13 @@ export default function MainApp() {
       )}
 
       {appState === "export" && (
-        <PdfExportPage onBack={() => setAppState("tailoring")} />
+        <PdfExportPage
+          onBack={() => setAppState("tailoring")}
+          onRestart={() => {
+            setAnalysisData(null);
+            setAppState("upload");
+          }}
+        />
       )}
     </div>
   );

@@ -7,7 +7,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileCheck2,
-  ScanLine,
+  Search,
+  Activity,
 } from "lucide-react";
 
 export default function UploadPage({ onAnalyze }) {
@@ -25,10 +26,10 @@ export default function UploadPage({ onAnalyze }) {
   const isJdValid = wordCount >= 30;
 
   const processSteps = [
-    "Extracting document text...",
-    "Cross-referencing JD requirements...",
-    "Generating tailored bullets...",
-    "Calculating final match score...",
+    { text: "Extracting document text...", icon: FileText },
+    { text: "Cross-referencing JD requirements...", icon: Search },
+    { text: "Generating tailored bullets...", icon: Wand2 },
+    { text: "Calculating final match score...", icon: Activity },
   ];
 
   useEffect(() => {
@@ -83,21 +84,29 @@ export default function UploadPage({ onAnalyze }) {
   };
 
   if (isProcessing) {
+    const CurrentIcon = processSteps[processStep].icon;
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent/20 blur-[100px] rounded-full pointer-events-none"></div>
 
         <div className="flex flex-col items-center gap-8 z-10">
           <div className="relative w-32 h-40 bg-surface border border-border rounded-xl shadow-2xl flex items-center justify-center overflow-hidden">
-            <FileText className="w-12 h-12 text-accent opacity-50" />
+            <CurrentIcon
+              key={`large-${processStep}`}
+              className="w-12 h-12 text-accent opacity-50 animate-in zoom-in duration-300"
+            />
             <div className="absolute top-0 left-0 w-full h-1 bg-accent shadow-[0_0_15px_3px_rgba(36,138,84,0.5)] animate-[bounce_2s_infinite]"></div>
             <div className="absolute inset-0 bg-gradient-to-b from-accent/10 to-transparent opacity-50"></div>
           </div>
 
           <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-3 text-primary font-medium text-lg">
-              <ScanLine className="w-5 h-5 animate-pulse text-accent" />
-              {processSteps[processStep]}
+            <div className="flex items-center gap-3 text-primary font-medium text-lg h-8">
+              <CurrentIcon
+                key={`small-${processStep}`}
+                className="w-5 h-5 animate-pulse text-accent animate-in spin-in-12 duration-300"
+              />
+              {processSteps[processStep].text}
             </div>
             <div className="w-64 h-1.5 bg-border rounded-full overflow-hidden">
               <div

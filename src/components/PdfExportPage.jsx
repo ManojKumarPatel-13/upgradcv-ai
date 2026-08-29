@@ -162,7 +162,7 @@ export default function PdfExportPage({ onBack, onRestart }) {
           </div>
 
           {!isGenerating && (
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-full px-6 py-3 flex items-center gap-6 animate-in slide-in-from-bottom-4 fade-in duration-700">
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 scale-[0.95] bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-full px-6 py-3 flex items-center gap-6 animate-in slide-in-from-bottom-4 fade-in duration-700 z-30">
               <div className="flex items-center gap-3">
                 <div className="flex flex-col">
                   <span className="text-[10px] uppercase tracking-wider text-secondary font-bold">
